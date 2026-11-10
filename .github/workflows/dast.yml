@@ -64,13 +64,22 @@ jobs:
       - name: Run OWASP ZAP baseline scan
         run: docker compose -f docker-compose.yml -f docker-compose.dast.yml run --rm zap
 
+            - name: Verify ZAP reports
+        if: always()
+        run: |
+          echo "Checking ZAP reports..."
+          ls -lah artifacts/
+
+          test -s artifacts/zap-report.html
+          test -s artifacts/zap-report.json
+
       - name: Upload ZAP reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: owasp-zap-baseline-${{ github.run_number }}
           path: artifacts/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
 
       - name: Collect stack logs on failure

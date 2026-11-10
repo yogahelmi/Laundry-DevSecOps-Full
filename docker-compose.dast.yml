@@ -13,9 +13,9 @@ services:
       - "5"
       - -I
       - -r
-      - zap-report.html
+      - /zap/wrk/zap-report.html
       - -J
-      - zap-report.json
+      - /zap/wrk/zap-report.json
     volumes:
       - ./artifacts:/zap/wrk:rw
     networks:
