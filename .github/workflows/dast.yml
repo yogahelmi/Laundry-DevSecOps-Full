@@ -61,7 +61,7 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.dast.yml logs --no-color
           exit 1
 
-            - name: Run OWASP ZAP baseline scan
+      - name: Run OWASP ZAP baseline scan
         run: docker compose -f docker-compose.yml -f docker-compose.dast.yml run --rm zap
 
       - name: Verify ZAP reports
