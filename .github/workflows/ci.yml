@@ -1,3 +1,4 @@
+
 name: CI - Test and Security
 
 on:
@@ -18,9 +19,35 @@ jobs:
   backend-tests:
     name: Backend tests and dependency audit
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: backend
+
+    env:
+      DB_HOST: 127.0.0.1
+      TEST_DB_PORT: 3306
+      DB_USER: laundry_test_user
+      DB_PASSWORD: test_only_password_123
+      DB_NAME: laundry_db
+      JWT_SECRET: integration-test-secret-only-do-not-use-in-production-2026
+
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_DATABASE: laundry_db
+          MARIADB_USER: laundry_test_user
+          MARIADB_PASSWORD: test_only_password_123
+          MARIADB_ROOT_PASSWORD: test_only_root_password_123
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=15
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -35,7 +62,35 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
+      - name: Initialize test database schema
+        run: |
+          node -e "
+          const fs = require('node:fs');
+          const mysql = require('mysql2/promise');
+
+          (async () => {
+            const db = await mysql.createConnection({
+              host: process.env.DB_HOST,
+              port: Number(process.env.TEST_DB_PORT),
+              user: process.env.DB_USER,
+              password: process.env.DB_PASSWORD,
+              database: process.env.DB_NAME,
+              multipleStatements: true
+            });
+
+            await db.query(
+              fs.readFileSync('../database/schema.sql', 'utf8')
+            );
+
+            await db.end();
+            console.log('Test database schema initialized.');
+          })().catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+          "
+
+      - name: Run unit and integration tests
         run: npm test
 
       - name: Dependency vulnerability audit
