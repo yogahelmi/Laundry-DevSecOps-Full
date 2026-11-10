@@ -37,7 +37,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Prepare report directory
-        run: mkdir -p artifacts
+        run: |
+          mkdir -p artifacts
+          chmod 0777 artifacts
+          ls -ld artifacts
 
       - name: Validate Docker Compose configuration
         run: docker compose -f docker-compose.yml -f docker-compose.dast.yml config --quiet
