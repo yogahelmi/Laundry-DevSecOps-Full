@@ -34,7 +34,7 @@ jobs:
         run: docker build -t laundry-frontend:${{ github.sha }} ./frontend
 
       - name: Scan backend image before publishing
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: laundry-backend:${{ github.sha }}
           format: table
