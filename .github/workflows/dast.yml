@@ -22,8 +22,8 @@ jobs:
 
     # Disposable test credentials only. Never use production credentials here.
     env:
-      DB_NAME: laundry_dast
-      DB_USER: laundry_dast
+      DB_NAME: laundry_db
+      DB_USER: laundry_db
       DB_PASSWORD: DastOnly_DB_Pass_2026!
       DB_ROOT_PASSWORD: DastOnly_Root_Pass_2026!
       JWT_SECRET: DAST_ONLY_SECRET_CHANGE_ME_2026_0123456789abcdef
