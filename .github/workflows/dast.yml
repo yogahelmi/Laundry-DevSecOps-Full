@@ -84,7 +84,18 @@ jobs:
 
       - name: Collect stack logs on failure
         if: failure()
-        run: docker compose -f docker-compose.yml -f docker-compose.dast.yml logs --no-color
+        run: |
+          echo "===== CONTAINER STATUS ====="
+          docker compose -f docker-compose.yml -f docker-compose.dast.yml ps -a
+
+          echo "===== MARIADB LOGS ====="
+          docker compose -f docker-compose.yml -f docker-compose.dast.yml logs --no-color --tail=200 db
+
+          echo "===== MARIADB HEALTHCHECK DETAILS ====="
+          docker inspect $(docker compose -f docker-compose.yml -f docker-compose.dast.yml ps -q db) --format '{{json .State.Health}}'
+
+          echo "===== BACKEND LOGS ====="
+          docker compose -f docker-compose.yml -f docker-compose.dast.yml logs --no-color --tail=100 backend
 
       - name: Stop test stack
         if: always()
