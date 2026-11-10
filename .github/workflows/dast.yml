@@ -1,0 +1,82 @@
+name: DAST - OWASP ZAP Baseline
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dast-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zap-baseline:
+    name: Deploy test stack and run ZAP baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Disposable test credentials only. Never use production credentials here.
+    env:
+      DB_NAME: laundry_dast
+      DB_USER: laundry_dast
+      DB_PASSWORD: DastOnly_DB_Pass_2026!
+      DB_ROOT_PASSWORD: DastOnly_Root_Pass_2026!
+      JWT_SECRET: DAST_ONLY_SECRET_CHANGE_ME_2026_0123456789abcdef
+      JWT_EXPIRES_IN: 1h
+      ADMIN_NAME: DAST Administrator
+      ADMIN_EMAIL: dast-admin@example.test
+      ADMIN_PASSWORD: DastOnly_Admin_Pass_2026!
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Prepare report directory
+        run: mkdir -p artifacts
+
+      - name: Validate Docker Compose configuration
+        run: docker compose -f docker-compose.yml -f docker-compose.dast.yml config --quiet
+
+      - name: Start isolated application stack
+        run: docker compose -f docker-compose.yml -f docker-compose.dast.yml up -d --build db backend frontend
+
+      - name: Wait for application health
+        shell: bash
+        run: |
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1/api/health >/dev/null; then
+              echo "Application is healthy."
+              exit 0
+            fi
+            echo "Waiting for application... (${attempt}/60)"
+            sleep 5
+          done
+          echo "Application did not become healthy."
+          docker compose -f docker-compose.yml -f docker-compose.dast.yml ps
+          docker compose -f docker-compose.yml -f docker-compose.dast.yml logs --no-color
+          exit 1
+
+      - name: Run OWASP ZAP baseline scan
+        run: docker compose -f docker-compose.yml -f docker-compose.dast.yml run --rm zap
+
+      - name: Upload ZAP reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-zap-baseline-${{ github.run_number }}
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Collect stack logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.yml -f docker-compose.dast.yml logs --no-color
+
+      - name: Stop test stack
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.dast.yml down -v --remove-orphans

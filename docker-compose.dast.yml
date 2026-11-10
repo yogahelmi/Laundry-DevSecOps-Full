@@ -1,0 +1,22 @@
+services:
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    depends_on:
+      - frontend
+    command:
+      - zap-baseline.py
+      - -t
+      - http://frontend:8080
+      - -m
+      - "3"
+      - -T
+      - "5"
+      - -I
+      - -r
+      - zap-report.html
+      - -J
+      - zap-report.json
+    volumes:
+      - ./artifacts:/zap/wrk:rw
+    networks:
+      - laundry
