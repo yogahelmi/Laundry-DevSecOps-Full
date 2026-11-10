@@ -61,17 +61,32 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.dast.yml logs --no-color
           exit 1
 
+      
       - name: Run OWASP ZAP baseline scan
-        run: docker compose -f docker-compose.yml -f docker-compose.dast.yml run --rm zap
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.dast.yml run --rm zap
 
+      - name: Inspect ZAP report output
+        if: always()
+        run: |
+          echo "===== ARTIFACT DIRECTORY ====="
+          ls -lah artifacts/ || true
+
+          echo "===== ZAP REPORT FILES ====="
+          find artifacts/ -maxdepth 2 -type f -print || true
+
+      
       - name: Verify ZAP reports
         if: always()
         run: |
           echo "Checking ZAP reports..."
-          ls -lah artifacts/
 
-          test -s artifacts/zap-report.html
-          test -s artifacts/zap-report.json
+          if [ -s artifacts/zap-report.html ] && [ -s artifacts/zap-report.json ]; then
+            echo "Both ZAP reports were generated."
+          else
+            echo "ZAP reports are missing or empty."
+            exit 1
+          fi
 
       - name: Upload ZAP reports
         if: always()
@@ -79,8 +94,9 @@ jobs:
         with:
           name: owasp-zap-baseline-${{ github.run_number }}
           path: artifacts/
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
+
 
       - name: Collect stack logs on failure
         if: failure()

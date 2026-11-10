@@ -1,8 +1,10 @@
+
 services:
   zap:
     image: ghcr.io/zaproxy/zaproxy:stable
     depends_on:
       - frontend
+    working_dir: /zap/wrk
     command:
       - zap-baseline.py
       - -t
@@ -13,9 +15,9 @@ services:
       - "5"
       - -I
       - -r
-      - /zap/wrk/zap-report.html
+      - zap-report.html
       - -J
-      - /zap/wrk/zap-report.json
+      - zap-report.json
     volumes:
       - ./artifacts:/zap/wrk:rw
     networks:
