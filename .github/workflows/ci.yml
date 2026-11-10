@@ -10,9 +10,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend-tests:
-    name: Backend tests
+    name: Backend tests and dependency audit
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -20,14 +24,20 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
       - name: Run tests
         run: npm test
+
       - name: Dependency vulnerability audit
         run: npm audit --audit-level=high
 
@@ -35,7 +45,9 @@ jobs:
     name: SAST - Semgrep
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
+
       - name: Semgrep scan
         uses: semgrep/semgrep-action@v1
         with:
@@ -45,9 +57,11 @@ jobs:
     name: Secret scanning - Gitleaks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout full history
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Scan repository for secrets
         uses: gitleaks/gitleaks-action@v2
         env:
@@ -57,12 +71,15 @@ jobs:
     name: Filesystem scan - Trivy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Scan filesystem
-        uses: aquasecurity/trivy-action@v0.36.0
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Scan filesystem for vulnerabilities, secrets, and misconfigurations
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           scan-type: fs
           scan-ref: .
+          scanners: vuln,secret,misconfig
           format: table
           severity: HIGH,CRITICAL
           exit-code: '1'
