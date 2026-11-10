@@ -1,4 +1,3 @@
-
 name: CD - Build, Scan and Publish Images
 
 on:
@@ -6,26 +5,29 @@ on:
     workflows: ["CI - Test and Security"]
     types: [completed]
     branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: cd-${{ github.event.workflow_run.head_branch || github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: github.event.workflow_run.conclusion == 'success'
     name: Build, scan and publish container images
     runs-on: ubuntu-latest
 
     env:
-      IMAGE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      IMAGE_SHA: ${{ github.event.workflow_run.head_sha }}
 
     steps:
-      - name: Checkout tested source
+      - name: Checkout exactly the source tested by CI
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set lowercase image owner
         id: vars
@@ -42,6 +44,7 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: laundry-backend:${{ env.IMAGE_SHA }}
+          scanners: vuln,secret
           format: table
           severity: HIGH,CRITICAL
           exit-code: '1'
@@ -50,6 +53,7 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: laundry-frontend:${{ env.IMAGE_SHA }}
+          scanners: vuln,secret
           format: table
           severity: HIGH,CRITICAL
           exit-code: '1'
@@ -72,7 +76,5 @@ jobs:
         run: |
           docker tag laundry-frontend:${IMAGE_SHA} ghcr.io/${OWNER}/laundry-frontend:${IMAGE_SHA}
           docker tag laundry-frontend:${IMAGE_SHA} ghcr.io/${OWNER}/laundry-frontend:latest
-          echo "Pushing frontend SHA tag..."
           docker push ghcr.io/${OWNER}/laundry-frontend:${IMAGE_SHA}
-          echo "Pushing frontend latest tag..."
           docker push ghcr.io/${OWNER}/laundry-frontend:latest

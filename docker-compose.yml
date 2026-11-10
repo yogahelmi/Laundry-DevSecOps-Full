@@ -31,6 +31,11 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       DB_NAME: ${DB_NAME:-laundry_db}
       CORS_ORIGIN: http://localhost
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      ADMIN_NAME: ${ADMIN_NAME:-Administrator}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Set ADMIN_EMAIL in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
     depends_on:
       db:
         condition: service_healthy
@@ -47,7 +52,7 @@ services:
     image: laundry-frontend:local
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "80:8080"
     depends_on:
       backend:
         condition: service_healthy
