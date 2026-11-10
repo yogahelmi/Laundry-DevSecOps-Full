@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Manajemen Cloud Laundry</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased">
+    <div id="app" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        
+        <header class="mb-8 flex justify-between items-end">
+            <div>
+                <h1 class="text-3xl font-bold text-blue-600">CloudLaundry.</h1>
+                <p class="text-sm text-gray-500 mt-1">Distributed System Architecture Dashboard</p>
+            </div>
+            <button @click="fetchOrders" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-md text-sm font-semibold hover:bg-blue-200 transition">
+                Refresh Data
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+                <h2 class="text-lg font-semibold mb-4 border-b pb-2">Buat Pesanan Baru</h2>
+                <form @submit.prevent="submitOrder" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Nama Pelanggan</label>
+                        <input v-model="form.customer_name" type="text" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Layanan</label>
+                        <select v-model="form.service_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                            <option value="" disabled>Pilih layanan...</option>
+                            <option v-for="srv in services" :key="srv.id" :value="srv.id">
+                                {{ srv.name }} - Rp{{ parseInt(srv.price_per_kg).toLocaleString('id-ID') }}/kg
+                            </option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Berat (Kg)</label>
+                        <input v-model="form.weight" type="number" min="0.1" max="100" step="0.1" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-700 transition">
+                        Simpan Pesanan
+                    </button>
+                </form>
+            </div>
+
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID / Pelanggan</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Layanan</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr v-if="orders.length === 0">
+                                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">Belum ada data pesanan.</td>
+                            </tr>
+                            <tr v-for="order in orders" :key="order.id" class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">{{ order.id }}</div>
+                                    <div class="text-sm text-gray-500">{{ order.customer_name }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ order.service_name }}</div>
+                                    <div class="text-sm text-gray-500">{{ order.weight }} Kg</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                    Rp{{ parseInt(order.total_amount).toLocaleString('id-ID') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span :class="order.order_status === 'Done' || order.order_status === 'Picked Up' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'" 
+                                          class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
+                                        {{ order.order_status }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <select @change="updateStatus(order.id, $event.target.value, order.payment_status)" class="border border-gray-300 rounded p-1 text-xs focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="" disabled selected>Ubah Status</option>
+                                        <option value="Queue">Queue</option>
+                                        <option value="Washing">Washing</option>
+                                        <option value="Ironing">Ironing</option>
+                                        <option value="Done">Done</option>
+                                        <option value="Picked Up">Picked Up</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        
+        const API_URL = '/api'; 
+
+        createApp({
+            data() {
+                return {
+                    services: [],
+                    orders: [],
+                    form: { customer_name: '', service_id: '', weight: '' }
+                }
+            },
+            methods: {
+                async fetchServices() {
+                    try {
+                        const res = await fetch(`${API_URL}/services`);
+                        const json = await res.json();
+                        if(json.success) this.services = json.data;
+                    } catch (err) { console.error('Gagal memuat data:', err); }
+                },
+                async fetchOrders() {
+                    try {
+                        const res = await fetch(`${API_URL}/orders`);
+                        const json = await res.json();
+                        if(json.success) this.orders = json.data;
+                    } catch (err) { console.error('Gagal memuat data:', err); }
+                },
+                async submitOrder() {
+                    try {
+                        const res = await fetch(`${API_URL}/orders`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.form)
+                        });
+                        const json = await res.json();
+                        if(json.success) {
+                            alert('Pesanan berhasil dibuat!');
+                            this.form.customer_name = ''; this.form.weight = '';
+                            this.fetchOrders();
+                        } else {
+                            alert('Gagal: ' + json.error);
+                        }
+                    } catch (err) { alert('Terjadi kesalahan jaringan'); }
+                },
+                async updateStatus(id, newStatus, currentPayment) {
+                    try {
+                        const res = await fetch(`${API_URL}/orders/${id}/status`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ order_status: newStatus, payment_status: currentPayment })
+                        });
+                        const json = await res.json();
+                        if(json.success) this.fetchOrders();
+                    } catch (err) { console.error('Gagal memuat data:', err); }
+                }
+            },
+            mounted() {
+                this.fetchServices();
+                this.fetchOrders();
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>

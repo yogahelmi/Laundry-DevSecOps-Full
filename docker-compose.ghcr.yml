@@ -1,0 +1,6 @@
+services:
+  backend:
+    image: ghcr.io/${GHCR_OWNER:?Set GHCR_OWNER in .env}/laundry-backend:${IMAGE_TAG:-latest}
+
+  frontend:
+    image: ghcr.io/${GHCR_OWNER:?Set GHCR_OWNER in .env}/laundry-frontend:${IMAGE_TAG:-latest}

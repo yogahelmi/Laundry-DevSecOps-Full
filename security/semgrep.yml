@@ -1,0 +1,10 @@
+rules:
+  - id: no-hardcoded-password-assignment
+    message: Avoid hardcoded passwords; use environment variables or a secret manager.
+    severity: ERROR
+    languages: [javascript]
+    pattern: |
+      const $VAR = "..."
+    paths:
+      include:
+        - backend/**
