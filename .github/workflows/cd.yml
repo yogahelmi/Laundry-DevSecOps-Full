@@ -1,3 +1,4 @@
+
 name: CD - Build, Scan and Publish Images
 
 on:
@@ -16,6 +17,10 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     name: Build, scan and publish container images
     runs-on: ubuntu-latest
+
+    env:
+      IMAGE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
     steps:
       - name: Checkout tested source
         uses: actions/checkout@v4
@@ -28,15 +33,15 @@ jobs:
         run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Build backend image
-        run: docker build -t laundry-backend:${{ github.sha }} ./backend
+        run: docker build -t laundry-backend:${IMAGE_SHA} ./backend
 
       - name: Build frontend image
-        run: docker build -t laundry-frontend:${{ github.sha }} ./frontend
+        run: docker build -t laundry-frontend:${IMAGE_SHA} ./frontend
 
       - name: Scan backend image before publishing
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: laundry-backend:${{ github.sha }}
+          image-ref: laundry-backend:${{ env.IMAGE_SHA }}
           format: table
           severity: HIGH,CRITICAL
           exit-code: '1'
@@ -44,7 +49,7 @@ jobs:
       - name: Scan frontend image before publishing
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: laundry-frontend:${{ github.sha }}
+          image-ref: laundry-frontend:${{ env.IMAGE_SHA }}
           format: table
           severity: HIGH,CRITICAL
           exit-code: '1'
@@ -55,19 +60,19 @@ jobs:
       - name: Tag and publish backend
         env:
           OWNER: ${{ steps.vars.outputs.owner }}
-          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
-          docker tag laundry-backend:${SHA} ghcr.io/${OWNER}/laundry-backend:${SHA}
-          docker tag laundry-backend:${SHA} ghcr.io/${OWNER}/laundry-backend:latest
-          docker push ghcr.io/${OWNER}/laundry-backend:${SHA}
+          docker tag laundry-backend:${IMAGE_SHA} ghcr.io/${OWNER}/laundry-backend:${IMAGE_SHA}
+          docker tag laundry-backend:${IMAGE_SHA} ghcr.io/${OWNER}/laundry-backend:latest
+          docker push ghcr.io/${OWNER}/laundry-backend:${IMAGE_SHA}
           docker push ghcr.io/${OWNER}/laundry-backend:latest
 
       - name: Tag and publish frontend
         env:
           OWNER: ${{ steps.vars.outputs.owner }}
-          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
-          docker tag laundry-frontend:${SHA} ghcr.io/${OWNER}/laundry-frontend:${SHA}
-          docker tag laundry-frontend:${SHA} ghcr.io/${OWNER}/laundry-frontend:latest
-          docker push ghcr.io/${OWNER}/laundry-frontend:${SHA}
+          docker tag laundry-frontend:${IMAGE_SHA} ghcr.io/${OWNER}/laundry-frontend:${IMAGE_SHA}
+          docker tag laundry-frontend:${IMAGE_SHA} ghcr.io/${OWNER}/laundry-frontend:latest
+          echo "Pushing frontend SHA tag..."
+          docker push ghcr.io/${OWNER}/laundry-frontend:${IMAGE_SHA}
+          echo "Pushing frontend latest tag..."
           docker push ghcr.io/${OWNER}/laundry-frontend:latest
