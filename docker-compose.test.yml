@@ -1,0 +1,24 @@
+
+services:
+  db-test:
+    image: mariadb:11.4
+    container_name: laundry-test-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: laundry_db
+      MARIADB_USER: laundry_test_user
+      MARIADB_PASSWORD: test_only_password_123
+      MARIADB_ROOT_PASSWORD: test_only_root_password_123
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - laundry_test_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  laundry_test_data:

@@ -6,3 +6,12 @@ npm-debug.log*
 .DS_Store
 coverage/
 .test-results/
+
+# Frontend build output
+frontend/dist/
+
+# Backup files
+*.backup
+
+# Nested extracted repository
+/Laundry-DevSecOps-Full/
